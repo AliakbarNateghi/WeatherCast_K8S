@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-frontend
+  labels:
+    app: react-frontend
+spec:
+  replicas: 1  # Reduced to 1 for debugging
+  selector:
+    matchLabels:
+      app: react-frontend
+  template:
+    metadata:
+      labels:
+        app: react-frontend
+    spec:
+      containers:
+      - name: react
+        image: react-k8s:latest
+        imagePullPolicy: Never  # Use local images only
+        ports:
+        - containerPort: 3000
+        # Environment variables
+        env:
+        - name: REACT_APP_BACKEND_URL
+          value: "http://fastapi-service:8000"  # K8s service DNS name
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "3000"
+        - name: CHOKIDAR_USEPOLLING
+          value: "true"
+        - name: WATCHPACK_POLLING
+          value: "true"
+        # NO HEALTH CHECKS - Let it start without interruption
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: react-service
+spec:
+  selector:
+    app: react-frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: LoadBalancer  # This exposes the frontend to external traffic
