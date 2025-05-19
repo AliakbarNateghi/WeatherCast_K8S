@@ -9,7 +9,12 @@ export default defineConfig({
     port: 3000,
     watch: {
       usePolling: true
-    }
+    },
+    allowedHosts: [
+    'weather-app.local',
+    'localhost',
+    '.local' // Allow all .local domains
+  ]
   },
   optimizeDeps: {
     exclude: ['react-icons', 'date-fns', 'react-query'],

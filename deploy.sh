@@ -1,75 +1,90 @@
 #!/bin/bash
 
-# Build and deploy script for the K8s demo app
+# Optimized build and deploy script that avoids re-downloading
 
-set -e  # Exit on any error
+set -e
 
-echo "Building Docker images..."
+# Configuration
+MINIKUBE_PROFILE="weather-app"
+K8S_VERSION="v1.32.0"
 
-# Check if minikube is running
-if ! command -v minikube &> /dev/null || ! minikube status | grep -q "host: Running"; then
-    echo "Error: Minikube is not running. Please start it with: minikube start"
-    exit 1
+echo "🚀 Starting optimized deployment..."
+
+# Check if minikube profile exists, create if not
+if ! minikube profile list | grep -q "$MINIKUBE_PROFILE"; then
+    echo "📦 Creating new minikube profile with persistent cache..."
+    minikube start \
+        --profile="$MINIKUBE_PROFILE" \
+        --kubernetes-version="$K8S_VERSION" \
+        --driver=docker \
+        --memory=4096 \
+        --cpus=2 \
+        --disk-size=20GB \
+        --cache-images=true
+else
+    echo "♻️  Using existing minikube profile..."
+    minikube start --profile="$MINIKUBE_PROFILE"
 fi
 
+# Set context to use our profile
+kubectl config use-context "$MINIKUBE_PROFILE"
+
 # Set Docker environment to use minikube's Docker daemon
-echo "Setting Docker environment to use minikube..."
-eval $(minikube docker-env)
+echo "🐳 Setting Docker environment..."
+eval $(minikube docker-env --profile="$MINIKUBE_PROFILE")
 
-# Build backend image directly in minikube's Docker
-echo "Building FastAPI backend in minikube..."
-cd backend
-docker build -t fastapi-k8s:latest .
-cd ..
+# Build images only if they don't exist or source changed
+echo "🔨 Building Docker images..."
 
-# Build frontend image directly in minikube's Docker  
-echo "Building React frontend in minikube..."
-cd frontend
-# Remove any existing package-lock.json to avoid sync issues
-rm -f package-lock.json
-docker build -t react-k8s:latest .
-cd ..
+# Check if images exist
+BACKEND_EXISTS=$(docker images -q fastapi-k8s:latest)
+FRONTEND_EXISTS=$(docker images -q react-k8s:latest)
 
-echo "Docker images built successfully in minikube!"
+if [[ -z "$BACKEND_EXISTS" ]] || [[ -n "$(find backend/ -newer $(docker images fastapi-k8s:latest --format "{{.CreatedAt}}" | head -1) 2>/dev/null)" ]]; then
+    echo "Building FastAPI backend..."
+    cd backend
+    docker build -t fastapi-k8s:latest .
+    cd ..
+else
+    echo "✅ Backend image up to date"
+fi
 
-# Verify images exist in minikube
-echo "Verifying images in minikube..."
-minikube image ls | grep -E "(fastapi-k8s|react-k8s)" || echo "Warning: Images not found in minikube"
+if [[ -z "$FRONTEND_EXISTS" ]] || [[ -n "$(find frontend/ -newer $(docker images react-k8s:latest --format "{{.CreatedAt}}" | head -1) 2>/dev/null)" ]]; then
+    echo "Building React frontend..."
+    cd frontend
+    rm -f package-lock.json
+    docker build -t react-k8s:latest .
+    cd ..
+else
+    echo "✅ Frontend image up to date"
+fi
 
-echo "Applying Kubernetes configurations..."
+echo "🚀 Deploying to Kubernetes..."
 
-# Delete existing deployments to force recreation with new images
+# Force restart deployments to pick up new images
 kubectl delete deployments --ignore-not-found=true fastapi-backend react-frontend
 
-# Apply Kubernetes configurations
+# Apply configurations
 kubectl apply -f k8s/backend.yaml
 kubectl apply -f k8s/frontend.yaml
 
-echo "Deployment complete!"
-
-# Wait for deployments to be ready
-echo "Waiting for deployments to be ready..."
+# Wait for deployments
+echo "⏳ Waiting for deployments..."
 kubectl wait --for=condition=available --timeout=60s deployment/fastapi-backend
 kubectl wait --for=condition=available --timeout=100s deployment/react-frontend
 
-echo "Checking deployment status..."
+echo "✅ Deployment complete!"
+
+# Show status and access information
 kubectl get deployments
 kubectl get services
 
-# Get service URLs
-echo -e "\n--- Service Information ---"
-kubectl get services -o wide
+echo ""
+echo "🌐 Access URLs:"
+echo "Frontend: $(minikube service react-service --url --profile="$MINIKUBE_PROFILE")"
+echo "Backend: $(minikube service fastapi-service --url --profile="$MINIKUBE_PROFILE")"
 
-if command -v minikube &> /dev/null && minikube status | grep -q "host: Running"; then
-    echo -e "\n--- Minikube Service URLs ---"
-    echo "Frontend: $(minikube service react-service --url)"
-    echo "Backend: $(minikube service fastapi-service --url)"
-else
-    echo -e "\n--- Access the application ---"
-    echo "Frontend: http://localhost:3000 (after port-forwarding)"
-    echo "Backend: http://localhost:8000 (after port-forwarding)"
-    echo ""
-    echo "To access locally, run:"
-    echo "kubectl port-forward service/react-service 3000:3000"
-    echo "kubectl port-forward service/fastapi-service 8000:8000"
-fi
+# Keep minikube running
+echo ""
+echo "💡 To stop: minikube stop --profile=$MINIKUBE_PROFILE"
+echo "💡 To delete: minikube delete --profile=$MINIKUBE_PROFILE"
