@@ -5,7 +5,7 @@ metadata:
   labels:
     app: react-frontend
 spec:
-  replicas: 2  # Scale up to 2 replicas like the backend
+  replicas: 1  # Start with 1 replica for troubleshooting
   selector:
     matchLabels:
       app: react-frontend
@@ -19,26 +19,31 @@ spec:
         image: react-k8s:latest
         imagePullPolicy: Never  # Use local images only
         ports:
-        - containerPort: 3000
-        # Environment variables for Ingress setup
+        - containerPort: 80  # nginx serves on port 80
+        # Environment variables
         env:
-        - name: REACT_APP_BACKEND_URL
-          value: "/api"  # Use relative path for Ingress
-        - name: HOST
-          value: "0.0.0.0"
-        - name: PORT
-          value: "3000"
-        - name: CHOKIDAR_USEPOLLING
-          value: "true"
-        - name: WATCHPACK_POLLING
-          value: "true"
-        # NO HEALTH CHECKS - Let it start without interruption
+        - name: NODE_ENV
+          value: "production"
+        # Health checks - using port 80 since nginx serves on that port
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        # Resource limits
         resources:
           requests:
-            memory: "256Mi"
+            memory: "128Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "256Mi"
             cpu: "200m"
 ---
 apiVersion: v1
@@ -50,6 +55,7 @@ spec:
     app: react-frontend
   ports:
     - protocol: TCP
-      port: 3000
-      targetPort: 3000
-  type: LoadBalancer  # This exposes the frontend to external traffic
+      port: 80      # Service port matches nginx port
+      targetPort: 80 # Container port
+      nodePort: 30255  # Fixed external port for frontend
+  type: NodePort

@@ -1,5 +1,5 @@
 # Development FastAPI with live reload
-FROM python:3.11-alpine
+FROM nexus.runc.info/python:3.11-alpine
 
 WORKDIR /app
 
