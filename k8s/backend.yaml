@@ -18,6 +18,9 @@ spec:
       - name: fastapi
         image: fastapi-k8s:latest
         imagePullPolicy: Never  # Use local images only
+        env:
+        - name: WEATHER_API_KEY
+          value: "9de243494c0b295cca9337e1e96b00e2"  # New API key from OpenWeatherMap
         ports:
         - containerPort: 8000
         # Health checks - crucial for K8s to know when pod is ready
@@ -53,4 +56,6 @@ spec:
     - protocol: TCP
       port: 8000      # Service port
       targetPort: 8000 # Container port
+      nodePort: 30250  # Fixed external port
   type: NodePort  # Changed from ClusterIP to allow external access
+

@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom global styles */
+body {
+  @apply bg-gradient-to-br from-blue-900 to-indigo-900 min-h-screen text-white font-Roboto;
+}
+
+.card {
+  @apply bg-white/10 backdrop-blur-lg rounded-lg p-4 shadow-lg border border-white/20;
+}
+
+.input-field {
+  @apply w-full bg-white/20 backdrop-blur-md rounded-l-full py-2 px-4 border-none outline-none text-white placeholder:text-gray-200;
+}
+
+.btn-primary {
+  @apply bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-r-full transition-colors;
+}

@@ -1,4 +1,4 @@
-# Simple development Dockerfile for React
+# Simple development Dockerfile for Vite React
 FROM node:18-alpine
 
 # Set working directory
@@ -11,13 +11,12 @@ COPY package*.json ./
 RUN npm install
 
 # Copy source code and configuration
-COPY src/ src/
-COPY public/ public/
-COPY .env ./
+COPY . .
 
-# Expose port 3000 (React development server default)
+# Expose port 3000 (Vite default)
 EXPOSE 3000
 
-# Start React development server
+# Start Vite development server
 # --host 0.0.0.0 allows external connections (required for Docker)
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]
+
