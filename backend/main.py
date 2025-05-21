@@ -7,7 +7,12 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # Create FastAPI instance
-app = FastAPI(title="Weather API", version="1.0.0")
+app = FastAPI(
+    title="Weather API",
+    version="1.0.0",
+    # Add this line to specify the correct OpenAPI URL
+    openapi_url="/api/openapi.json"
+)
 
 # Configure CORS - allowing React frontend to communicate
 app.add_middleware(
