@@ -19,18 +19,18 @@ A modern weather application demonstrating a microservices architecture using Fa
                    └───────────┬──────────────┘
                                │
                                ▼
-        ┌────────────────────────────────────────┐
+        ┌─────────────────────────────────────────┐
         │                                         │
-┌───────▼───────┐                      ┌─────────▼────────┐
+┌───────▼───────┐                       ┌─────────▼────────┐
 │  React Frontend│◄───── API calls ────►│ FastAPI Backend  │
 │  (2 replicas)  │                      │   (3 replicas)   │
-└───────┬───────┘                      └─────────┬────────┘
+└───────┬───────┘                       └─────────┬────────┘
         │                                         │
         ▼                                         ▼
-┌───────────────┐                      ┌─────────────────┐
-│ react-service │                      │ fastapi-service │
-│   (NodePort)  │                      │    (NodePort)   │
-└───────────────┘                      └─────────────────┘
+┌───────────────┐                        ┌─────────────────┐
+│ react-service │                        │ fastapi-service │
+│   (NodePort)  │                        │    (NodePort)   │
+└───────────────┘                        └─────────────────┘
 ```
 
 ## Project Structure
