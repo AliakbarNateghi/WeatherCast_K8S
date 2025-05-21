@@ -5,7 +5,7 @@ metadata:
   labels:
     app: fastapi-backend
 spec:
-  replicas: 2  # Run 2 instances for basic high availability
+  replicas: 3  # Run 2 instances for basic high availability
   selector:
     matchLabels:
       app: fastapi-backend
