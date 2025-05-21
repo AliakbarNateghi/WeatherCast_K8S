@@ -1,17 +1,36 @@
-# FastAPI + React + Kubernetes Demo
+# WeatherCast: React + FastAPI + Kubernetes
 
-This project demonstrates a simple microservices architecture using FastAPI (backend), React (frontend), Docker containers, and Kubernetes orchestration.
+A modern weather application demonstrating a microservices architecture using FastAPI (backend), React (frontend), Docker containers, and Kubernetes orchestration.
+
+## Features
+
+- Current weather information for any city worldwide
+- 5-day weather forecast with hourly breakdowns
+- Real-time weather data from OpenWeatherMap API
+- Responsive design with Tailwind CSS
+- Containerized with Docker
+- Orchestrated with Kubernetes
 
 ## Architecture Overview
 
 ```
-[React Frontend] ←→ [FastAPI Backend]
-       ↓                    ↓
-   [dev-server:3000]   [uvicorn:8000]
-       ↓                    ↓
-[react-service]      [fastapi-service]
-       ↓                    ↓
-    [K8s Pod]           [K8s Pod]
+                   ┌─── Ingress Controller ───┐
+                   │    (NGINX Controller)    │
+                   └───────────┬──────────────┘
+                               │
+                               ▼
+        ┌────────────────────────────────────────┐
+        │                                         │
+┌───────▼───────┐                      ┌─────────▼────────┐
+│  React Frontend│◄───── API calls ────►│ FastAPI Backend  │
+│  (2 replicas)  │                      │   (3 replicas)   │
+└───────┬───────┘                      └─────────┬────────┘
+        │                                         │
+        ▼                                         ▼
+┌───────────────┐                      ┌─────────────────┐
+│ react-service │                      │ fastapi-service │
+│   (NodePort)  │                      │    (NodePort)   │
+└───────────────┘                      └─────────────────┘
 ```
 
 ## Project Structure
@@ -19,23 +38,25 @@ This project demonstrates a simple microservices architecture using FastAPI (bac
 ```
 .
 ├── backend/
-│   ├── main.py              # FastAPI application
+│   ├── main.py              # FastAPI weather API application
 │   ├── requirements.txt     # Python dependencies
-│   └── Dockerfile          # Backend container definition
+│   └── Dockerfile           # Backend container definition
 ├── frontend/
 │   ├── src/
-│   │   ├── App.js          # React main component
-│   │   ├── App.css         # Styles
-│   │   └── index.js        # React entry point
-│   ├── public/
-│   │   └── index.html      # HTML template
-│   ├── package.json        # Node.js dependencies
-│   ├── .env                # React dev server config
-│   └── Dockerfile          # Frontend container definition
+│   │   ├── App.jsx          # React main component
+│   │   ├── components/      # UI components
+│   │   ├── index.css        # Tailwind styles
+│   │   └── main.jsx         # React entry point
+│   ├── public/              # Static assets
+│   ├── package.json         # Node.js dependencies
+│   ├── nginx.conf           # Nginx configuration
+│   ├── tailwind.config.js   # Tailwind CSS config
+│   └── Dockerfile           # Frontend container definition
 ├── k8s/
-│   ├── backend.yaml        # Backend K8s deployment & service
-│   └── frontend.yaml       # Frontend K8s deployment & service
-└── deploy.sh               # Deployment automation script
+│   ├── backend.yaml         # Backend K8s deployment & service
+│   ├── frontend.yaml        # Frontend K8s deployment & service
+│   └── ingress.yaml         # Ingress configuration
+└── deploy.sh                # Deployment automation script
 ```
 
 ## Quick Start
@@ -46,18 +67,31 @@ This project demonstrates a simple microservices architecture using FastAPI (bac
 - Kubernetes cluster (minikube, kind, or cloud provider)
 - kubectl configured
 
-### 1. Clone and Setup
+### 1. Set Up Environment
 
 ```bash
-# Create project structure
-mkdir fastapi-react-k8s
-cd fastapi-react-k8s
+# Start minikube with appropriate resources
+minikube start --profile="weather-app" --cpus=2 --memory=4096mb --driver=docker
 
-# Create directories
-mkdir -p backend frontend/src frontend/public k8s
+# Enable ingress addon
+minikube addons enable ingress --profile="weather-app"
 ```
 
-### 2. Build and Deploy
+### 2. Configure Local Domain (Optional)
+
+Add the following entry to your `/etc/hosts` file:
+
+```
+<minikube-ip> weather-app.local
+```
+
+Replace `<minikube-ip>` with the output of:
+
+```bash
+minikube ip --profile="weather-app"
+```
+
+### 3. Build and Deploy
 
 ```bash
 # Make the deploy script executable
@@ -67,133 +101,137 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### 3. Access the Application
+### 4. Access the Application
 
-For minikube:
 ```bash
 # Get the frontend URL
-minikube service react-service --url
-
-# Get the backend URL (for testing)
-minikube service fastapi-service --url
+minikube service react-service --url --profile="weather-app"
 ```
 
-For other K8s clusters:
-```bash
-# Check service status
-kubectl get services
+Or access through the Ingress:
+- http://weather-app.local (if you configured the hosts file)
+- http://<minikube-ip> (direct IP access)
 
-# Port forward for local testing
-kubectl port-forward service/react-service 3000:80
-kubectl port-forward service/fastapi-service 8000:8000
-```
+The API documentation is available at:
+- http://weather-app.local/api/docs
 
-## Manual Deployment Steps
+## Kubernetes Features Demonstrated
 
-If you prefer to deploy manually:
+1. **Multi-Pod Deployments**: Frontend (2 replicas) and Backend (3 replicas)
+2. **Services**: NodePort for direct access; ClusterIP for Ingress routing
+3. **Ingress**: Path-based routing with regex support
+4. **Health Checks**: Liveness and readiness probes
+5. **Resource Management**: CPU and memory limits
+6. **Rolling Updates**: Zero-downtime deployments
 
-### 1. Build Docker Images
-
-```bash
-# Backend
-cd backend
-docker build -t fastapi-k8s:latest .
-
-# Frontend
-cd ../frontend
-docker build -t react-k8s:latest .
-```
-
-### 2. Load Images (minikube only)
-
-```bash
-minikube image load fastapi-k8s:latest
-minikube image load react-k8s:latest
-```
-
-### 3. Deploy to Kubernetes
-
-```bash
-kubectl apply -f k8s/backend.yaml
-kubectl apply -f k8s/frontend.yaml
-```
-
-### 4. Verify Deployment
-
-```bash
-# Check pod status
-kubectl get pods
-
-# Check service status
-kubectl get services
-
-# Check deployment status
-kubectl get deployments
-
-# View logs
-kubectl logs -l app=fastapi-backend
-kubectl logs -l app=react-frontend
-```
-
-## Key Kubernetes Concepts Demonstrated
-
-1. **Deployments**: Manage replica sets and rolling updates
-2. **Services**: Provide stable network endpoints
-3. **Health Checks**: Liveness and readiness probes
-4. **Resource Management**: CPU and memory limits
-5. **Service Discovery**: Internal DNS resolution
-6. **Multi-container Architecture**: Frontend and backend separation
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Images not found**: Make sure images are loaded into your cluster
-2. **Service not accessible**: Check LoadBalancer support or use port-forwarding
-3. **Backend connection failed**: Verify service names and ports match
-
-### Useful Commands
+## Key Commands
 
 ```bash
 # View all resources
 kubectl get all
 
-# Describe a problematic pod
+# Scale the backend
+kubectl scale deployment fastapi-backend --replicas=3
+
+# View logs
+kubectl logs -l app=fastapi-backend
+kubectl logs -l app=react-frontend
+
+# Access pod shell
+kubectl exec -it $(kubectl get pod -l app=react-frontend -o name | head -1) -- /bin/sh
+
+# Port forwarding (for debugging)
+kubectl port-forward svc/fastapi-service 8000:8000
+```
+
+## Environment Variables
+
+- `WEATHER_API_KEY`: API key for OpenWeatherMap (backend)
+- `NODE_ENV`: Environment for React/Node.js (frontend)
+
+## Troubleshooting
+
+### Ingress Issues
+
+If the Ingress is not routing correctly:
+
+```bash
+# Check Ingress status
+kubectl get ingress
+kubectl describe ingress weather-app-ingress
+
+# Verify Ingress controller is running
+kubectl get pods -n ingress-nginx
+
+# Check Ingress controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+```
+
+### Service Connectivity
+
+If services cannot connect:
+
+```bash
+# Check endpoints
+kubectl get endpoints
+
+# Test service DNS resolution
+kubectl run -it --rm --restart=Never busybox --image=busybox -- nslookup fastapi-service
+```
+
+### Pod Health
+
+If pods are not starting properly:
+
+```bash
+# Check pod status in detail
 kubectl describe pod <pod-name>
 
-# Check logs
+# Check container logs
 kubectl logs <pod-name>
-
-# Execute into a container
-kubectl exec -it <pod-name> -- /bin/sh
-
-# Delete all resources
-kubectl delete -f k8s/
 ```
 
 ## Production Considerations
 
 For production deployment, consider:
 
-1. **Image Registry**: Push images to a registry like Docker Hub or ECR
-2. **Secrets Management**: Use K8s secrets for sensitive data
-3. **Ingress Controller**: Replace LoadBalancer with Ingress for better routing
-4. **Persistent Storage**: Add volumes for stateful components
-5. **Monitoring**: Implement Prometheus/Grafana for observability
-6. **Security**: Network policies, RBAC, and security contexts
-7. **CI/CD**: Automate builds and deployments
+1. **Persistent Storage**: For stateful components
+2. **Secrets Management**: For API keys and sensitive data
+3. **Horizontal Pod Autoscaler**: For dynamic scaling
+4. **External Database**: For data persistence
+5. **CDN Integration**: For static assets
+6. **Monitoring**: Implement Prometheus/Grafana
+7. **CI/CD Pipeline**: Automate builds and deployments
 
-## Environment Variables
+## Further Reading
 
-- `REACT_APP_BACKEND_URL`: Backend API URL for React app
-- Automatically set to K8s service DNS name in deployment
+### Core Kubernetes Concepts
+- [Pods](https://kubernetes.io/docs/concepts/workloads/pods/) - The smallest deployable units used for both frontend and backend
+- [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) - Managing replicated pods and updates
+- [Services](https://kubernetes.io/docs/concepts/services-networking/service/) - Network abstraction for pod access
+- [ConfigMaps & Secrets](https://kubernetes.io/docs/concepts/configuration/) - Environment configuration
 
-## Scaling
+### Kubernetes Networking
+- [Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress/) - HTTP routing with nginx-ingress
+- [Ingress Path Types](https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types) - Understanding Prefix vs Exact path matching
+- [Service Types](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) - NodePort vs ClusterIP vs LoadBalancer
+- [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/) - Understanding internal DNS resolution
 
-```bash
-# Scale backend
-kubectl scale deployment fastapi-backend --replicas=5
+### Health Checks & Monitoring
+- [Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) - Understanding pod states
+- [Container Probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes) - Liveness and readiness checks
+- [Resource Metrics](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/) - Monitoring pod resource usage
 
-# Scale frontend
-kubectl scale deployment react-frontend --replicas=3
-```
+### Resource Management
+- [Managing Resources](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) - CPU and memory allocation
+- [Resource Quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/) - Limiting resource consumption
+
+### Minikube
+- [Minikube Handbook](https://minikube.sigs.k8s.io/docs/handbook/) - Comprehensive guide
+- [Minikube Addons](https://minikube.sigs.k8s.io/docs/handbook/addons/) - Including Ingress setup
+- [Accessing Apps](https://minikube.sigs.k8s.io/docs/handbook/accessing/) - Different ways to access services
+
+### Practical Guides
+- [Kubernetes Patterns](https://k8spatterns.io/) - Common implementation patterns
+- [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) - In-depth understanding
+- [NGINX Ingress Controller Documentation](https://kubernetes.github.io/ingress-nginx/) - Detailed configuration options
