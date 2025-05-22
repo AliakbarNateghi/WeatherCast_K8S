@@ -33,14 +33,14 @@ kubectl config use-context "$MINIKUBE_PROFILE"
 echo "🐳 Setting Docker environment..."
 eval $(minikube docker-env --profile="$MINIKUBE_PROFILE")
 
-# Build images only if they don't exist or source changed
+# Build images only if they don't exist
 echo "🔨 Building Docker images..."
 
 # Check if images exist
 BACKEND_EXISTS=$(docker images -q fastapi-k8s:latest)
 FRONTEND_EXISTS=$(docker images -q react-k8s:latest)
 
-if [[ -z "$BACKEND_EXISTS" ]] || [[ -n "$(find backend/ -newer $(docker images fastapi-k8s:latest --format "{{.CreatedAt}}" | head -1) 2>/dev/null)" ]]; then
+if [[ -z "$BACKEND_EXISTS" ]]; then
     echo "Building FastAPI backend..."
     cd backend
     docker build -t fastapi-k8s:latest .
@@ -49,10 +49,9 @@ else
     echo "✅ Backend image up to date"
 fi
 
-if [[ -z "$FRONTEND_EXISTS" ]] || [[ -n "$(find frontend/ -newer $(docker images react-k8s:latest --format "{{.CreatedAt}}" | head -1) 2>/dev/null)" ]]; then
+if [[ -z "$FRONTEND_EXISTS" ]]; then
     echo "Building React frontend..."
     cd frontend
-    rm -f package-lock.json
     docker build -t react-k8s:latest .
     cd ..
 else
@@ -88,3 +87,4 @@ echo "Backend: $(minikube service fastapi-service --url --profile="$MINIKUBE_PRO
 echo ""
 echo "💡 To stop: minikube stop --profile=$MINIKUBE_PROFILE"
 echo "💡 To delete: minikube delete --profile=$MINIKUBE_PROFILE"
+
