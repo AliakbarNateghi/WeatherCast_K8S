@@ -1,27 +1,33 @@
-# Backend service for Ingress
+# Services optimized for APISIX
 apiVersion: v1
 kind: Service
 metadata:
   name: fastapi-service
+  labels:
+    app: fastapi-backend
 spec:
   selector:
     app: fastapi-backend
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 8000
       targetPort: 8000
-  type: ClusterIP  # Changed from NodePort for Ingress
+  type: ClusterIP
+
 ---
-# Frontend service for Ingress
 apiVersion: v1
 kind: Service
 metadata:
   name: react-service
+  labels:
+    app: react-frontend
 spec:
   selector:
     app: react-frontend
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
       targetPort: 80
-  type: ClusterIP  # Changed from LoadBalancer for Ingress
+  type: ClusterIP

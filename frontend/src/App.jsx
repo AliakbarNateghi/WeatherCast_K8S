@@ -17,9 +17,15 @@ function App() {
     if (window.location.hostname === 'localhost') {
       return import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
     }
-    // If accessing via minikube IP, use the same IP with backend port
+
+    // For APISIX gateway access
+    if (window.location.hostname === 'weather-app.local') {
+      return 'http://weather-app.local/api';  // APISIX will route /api to backend
+    }
+
+    // If accessing via minikube IP with APISIX
     const currentUrl = new URL(window.location.href);
-    return import.meta.env.VITE_BACKEND_URL || `http://${currentUrl.hostname}:30250`;
+    return import.meta.env.VITE_BACKEND_URL || `http://${currentUrl.hostname}:30080/api`;
   };
 
   const BACKEND_URL = getBackendUrl();

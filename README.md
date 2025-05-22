@@ -95,10 +95,10 @@ minikube ip --profile="weather-app"
 
 ```bash
 # Make the deploy script executable
-chmod +x deploy.sh
+chmod +x nginx-deploy.sh
 
 # Run the deployment
-./deploy.sh
+./nginx-deploy.sh
 ```
 
 ### 4. Access the Application
